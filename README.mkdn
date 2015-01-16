@@ -1,0 +1,123 @@
+# TITLE
+
+Catalyst::Controller::Public - A controller to serve static files from a public URL
+
+# SYNOPSIS
+
+Simple Case:
+
+    use warnings;
+    use strict;
+
+    package MyApp::Controller::Public;
+
+    use base 'Catalyst::Controller::Public';
+
+    1;
+
+    # http://localhost/public/* => $c->{root}/public/*
+
+Custom Case:
+
+    use warnings;
+    use strict;
+
+    package MyApp::Controller::Static;
+
+    use base 'Catalyst::Controller::Public';
+
+    # localhost/favicon.ico => $HOME/root/static/favicon.ico
+    sub favicon :Path('/favicon.ico') { }
+
+    # localhost/css => $HOME/root/static/css
+    sub css :Path('/css') { }
+
+And This creates the following public and private endpoints
+
+    .-----------------------------------------------------------------+----------.
+    | Class                                                           | Type     |
+    +-----------------------------------------------------------------+----------+
+    | MyApp::Controller::Static                                       | instance |
+    '-----------------------------------------------------------------+----------'
+
+    [debug] Loaded Private actions:
+    .----------------------+--------------------------------------+--------------.
+    | Private              | Class                                | Method       |
+    +----------------------+--------------------------------------+--------------+
+    | /static/favicon      | MyApp::Controller::Static            | favicon      |
+    | /static/at   | MyApp::Controller::Static            | at   |
+    | /static/css          | MyApp::Controller::Static            | css          |
+    | /static/end          | MyApp::Controller::Static            | end          |
+    | /static/begin        | MyApp::Controller::Static            | begin        |
+    '----------------------+--------------------------------------+--------------'
+
+    [debug] Loaded Path actions:
+    .-------------------------------------+--------------------------------------.
+    | Path                                | Private                              |
+    +-------------------------------------+--------------------------------------+
+    | /css/...                            | /static/css                          |
+    | /favicon.ico/...                    | /static/favicon                      |
+    | /static/...                         | /static/at                   |
+    '-------------------------------------+--------------------------------------'
+
+So the following URLs would be mapped as so:
+
+    localhost/css => $HOME/root/static/css
+    localhost/favicon.ico => $HOME/root/static/favicon.ico
+    localhost/static/a/b/c/d  => $HOME/root/static/a/b/c/d
+
+And you can use $c->uri\_for for making links:
+
+    $c->uri_for($c->controller('Static')->action_for('at'), 'base.css');
+
+# DESCRIPTION
+
+**Note:** This class just extends [Catalyst::ControllerRole::Public](https://metacpan.org/pod/Catalyst::ControllerRole::Public).  All the main
+code is in that role.  You can do the same if it makes sense based on your programming
+organization needs.
+
+I prefer to have a controller to manage public assets since I like to use $c->uri\_for
+and similar to construct paths.  Out of the box this controller does what I think is
+the mostly right thing, which is it serves public assets using something like
+[Plack::App::Directory](https://metacpan.org/pod/Plack::App::Directory) or [Plack::App::File](https://metacpan.org/pod/Plack::App::File) (if I am in production or not)
+from $HOME/root/${controller-namespace} and it also makes it easy to create private
+paths to public URLs in the way that makes sense to you.
+
+If you inherit from this you will get a public URL endpoint which is the same as the
+controller's namespace.  That will serve files under your `public_path`, which just
+defaults as already described.
+
+Althought this controller offers some configuration and features, unlike more complex
+systems (see [Catalyst::Controller::Assets](https://metacpan.org/pod/Catalyst::Controller::Assets) for example) we do not attempt to full
+on 'Rails Asset pipeline' approach, such as building LESS to css or compiling CoffeeScript
+to Javascript.  The intention here is to be simple enough for people to use it with
+out a lot of documentation pondering.  Also in my experience Javascript developers and
+designers prefer to use there own tools and code generation pipelines, over any that
+comes bundled with [Catalyst](https://metacpan.org/pod/Catalyst) (just an observation).  As a result this is aimed at
+serving up files that are ready to go.  The assumption is that your Javascript and designers
+will use their desired tools and build static versions of thier code into the correct
+directory.
+
+# CONFIGURATON
+
+See [Catalyst::ControllerRole::Public](https://metacpan.org/pod/Catalyst::ControllerRole::Public).
+
+# ACTIONS
+
+See [Catalyst::ControllerRole::Public](https://metacpan.org/pod/Catalyst::ControllerRole::Public).
+
+# AUTHOR
+
+John Napiorkowski [email:jjnapiork@cpan.org](email:jjnapiork@cpan.org)
+
+# SEE ALSO
+
+[Catalyst](https://metacpan.org/pod/Catalyst), [Catalyst::Controller](https://metacpan.org/pod/Catalyst::Controller), [Plack::App::Directory](https://metacpan.org/pod/Plack::App::Directory),
+[Catalyst::Controller::Assets](https://metacpan.org/pod/Catalyst::Controller::Assets).
+
+# COPYRIGHT & LICENSE
+
+Copyright 2015, John Napiorkowski [email:jjnapiork@cpan.org](email:jjnapiork@cpan.org)
+
+This library is free software; you can redistribute it and/or modify it under
+the same terms as Perl itself.
