@@ -1,6 +1,6 @@
-# TITLE
+# NAME
 
-Catalyst::ActionRole::Public - mount a public url to files in your Catalyst project
+Catalyst::ActionRole::Public - Mount a public url to files in your project directory.
 
 # SYNOPSIS
 

@@ -6,7 +6,10 @@ use Cwd ();
 use Plack::MIME ();
 use HTTP::Date ();
 
-requires 'execute', 'match';
+our $VERSION = '0.002';
+
+requires 'attributes','execute', 'match', 'match_captures',
+  'namespace', 'private_path', 'name';
 
 has at => (
   is=>'ro',
@@ -128,9 +131,9 @@ around 'execute', sub {
 
 1;
 
-=head1 TITLE
+=head1 NAME
 
-Catalyst::ActionRole::Public - mount a public url to files in your Catalyst project
+Catalyst::ActionRole::Public - Mount a public url to files in your project directory.
 
 =head1 SYNOPSIS
 
