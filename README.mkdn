@@ -1,110 +1,109 @@
 # TITLE
 
-Catalyst::Controller::Public - A controller to serve static files from a public URL
+Catalyst::ActionRole::Public - mount a public url to files in your Catalyst project
 
 # SYNOPSIS
 
-Simple Case:
+    package MyApp::Controller::Root;
 
-    use warnings;
-    use strict;
+    use Moose;
+    use MooseX::MethodAttributes;
 
-    package MyApp::Controller::Public;
+    sub static :Local Does(Public) { ... }
 
-    use base 'Catalyst::Controller::Public';
+    __PACKAGE__->config(namespace=>'');
 
-    1;
-
-    # http://localhost/public/* => $c->{root}/public/*
-
-Custom Case:
-
-    use warnings;
-    use strict;
-
-    package MyApp::Controller::Static;
-
-    use base 'Catalyst::Controller::Public';
-
-    # localhost/favicon.ico => $HOME/root/static/favicon.ico
-    sub favicon :Path('/favicon.ico') { }
-
-    # localhost/css => $HOME/root/static/css
-    sub css :Path('/css') { }
-
-And This creates the following public and private endpoints
-
-    .-----------------------------------------------------------------+----------.
-    | Class                                                           | Type     |
-    +-----------------------------------------------------------------+----------+
-    | MyApp::Controller::Static                                       | instance |
-    '-----------------------------------------------------------------+----------'
-
-    [debug] Loaded Private actions:
-    .----------------------+--------------------------------------+--------------.
-    | Private              | Class                                | Method       |
-    +----------------------+--------------------------------------+--------------+
-    | /static/favicon      | MyApp::Controller::Static            | favicon      |
-    | /static/at   | MyApp::Controller::Static            | at   |
-    | /static/css          | MyApp::Controller::Static            | css          |
-    | /static/end          | MyApp::Controller::Static            | end          |
-    | /static/begin        | MyApp::Controller::Static            | begin        |
-    '----------------------+--------------------------------------+--------------'
-
-    [debug] Loaded Path actions:
-    .-------------------------------------+--------------------------------------.
-    | Path                                | Private                              |
-    +-------------------------------------+--------------------------------------+
-    | /css/...                            | /static/css                          |
-    | /favicon.ico/...                    | /static/favicon                      |
-    | /static/...                         | /static/at                   |
-    '-------------------------------------+--------------------------------------'
-
-So the following URLs would be mapped as so:
-
-    localhost/css => $HOME/root/static/css
-    localhost/favicon.ico => $HOME/root/static/favicon.ico
-    localhost/static/a/b/c/d  => $HOME/root/static/a/b/c/d
-
-And you can use $c->uri\_for for making links:
-
-    $c->uri_for($c->controller('Static')->action_for('at'), 'base.css');
+Will create an action that from URL 'localhost/static/a/b/c/d.js' will serve
+file $c->{root} . '/static' . '/a/b/c/d.js'.  Will also set content type, length
+and Last-Modified HTTP headers as needed.  If the file does not exist, will not
+match (allowing possibly other actions to match).
 
 # DESCRIPTION
 
-**Note:** This class just extends [Catalyst::ControllerRole::Public](https://metacpan.org/pod/Catalyst::ControllerRole::Public).  All the main
-code is in that role.  You can do the same if it makes sense based on your programming
-organization needs.
+Use this actionrole to map a public facing URL attached to an action to a file
+(or files) on the filesystem, off the $c->{root} directory.  If the file does
+not exist, the action will not match.  No default 'notfound' page is created,
+unlike [Plack::App::File](https://metacpan.org/pod/Plack::App::File) or [Catalyst::Plugin::Static::Simple](https://metacpan.org/pod/Catalyst::Plugin::Static::Simple).  The action
+method body may be used to modify the response before finalization.  A template
+may be constructed 
 
-I prefer to have a controller to manage public assets since I like to use $c->uri\_for
-and similar to construct paths.  Out of the box this controller does what I think is
-the mostly right thing, which is it serves public assets using something like
-[Plack::App::Directory](https://metacpan.org/pod/Plack::App::Directory) or [Plack::App::File](https://metacpan.org/pod/Plack::App::File) (if I am in production or not)
-from $HOME/root/${controller-namespace} and it also makes it easy to create private
-paths to public URLs in the way that makes sense to you.
+## ACTION METHOD BODY
 
-If you inherit from this you will get a public URL endpoint which is the same as the
-controller's namespace.  That will serve files under your `public_path`, which just
-defaults as already described.
+The body of your action will be executed after we've created a filehandle to
+the found file and setup the response.  You may leave it empty, or if you want
+to do additional logging or work, you can. Also, you will find a stash key 
+`public_file_path` has been populated with a [Path::Class](https://metacpan.org/pod/Path::Class) object which is
+pointing to the found file.  The action method body will not be executed if
+the file associated with the action does not exist.
 
-Althought this controller offers some configuration and features, unlike more complex
-systems (see [Catalyst::Controller::Assets](https://metacpan.org/pod/Catalyst::Controller::Assets) for example) we do not attempt to full
-on 'Rails Asset pipeline' approach, such as building LESS to css or compiling CoffeeScript
-to Javascript.  The intention here is to be simple enough for people to use it with
-out a lot of documentation pondering.  Also in my experience Javascript developers and
-designers prefer to use there own tools and code generation pipelines, over any that
-comes bundled with [Catalyst](https://metacpan.org/pod/Catalyst) (just an observation).  As a result this is aimed at
-serving up files that are ready to go.  The assumption is that your Javascript and designers
-will use their desired tools and build static versions of thier code into the correct
-directory.
+# ACTION ATTRIBUTES
 
-# CONFIGURATON
+Actions the consume this role provide the following subroutine attributes.
 
-See [Catalyst::ControllerRole::Public](https://metacpan.org/pod/Catalyst::ControllerRole::Public).
+## ShowDebugging
 
-# ACTIONS
+Enabled developer debugging output.  Example:
 
-See [Catalyst::ControllerRole::Public](https://metacpan.org/pod/Catalyst::ControllerRole::Public).
+    sub myaction :Local Does(Public) ShowDebugging { ... }
+
+If present do not surpress the extra developer mode debugging information.  Useful
+if you have trouble serving files and you can't figure out why.
+
+## At 
+
+Used to set the action class template used to match files on the filesystem to
+incoming requests.  Examples:
+
+    TBD
+
+**NOTE:** The following expansions are recognized in your `At` declaration:
+
+- :namespace
+
+    The action namespace, determined from the containing controller.  Usually this
+    is based on the Controller package name but you can override it via controller
+    configuration.  For example:
+
+        package MyApp::Controller::Foo::Bar::Baz;
+
+    Has a namespace of 'foo/bar/baz' by default.
+
+- :privatepath
+
+    The action private\_path value.  By default this is the namespace + the action
+    name.  For example:
+
+        package MyApp::Controller::Foo::Bar::Baz;
+
+        sub myaction :Path('abcd') { ... }
+
+    The action `myaction` has a private\_path of '/foo/bar/baz/myaction'.
+
+    **NOTE:** the expansion `:private_path` is mapped to this value as well.
+
+- :args
+- \*
+
+    The arguments to the request.  For example:
+
+        Package MyApp::Controller::Static;
+
+        sub myfiles :Path('') Does(Public) At(/:namespace/*) { ... }
+
+    Would map 'http://localhost/static/a/b/c/d.txt' to $c->{root} . '/static/a/b/c/d.txt'.\\
+
+    In this case $args = \['a', 'b', 'c', 'd.txt'\]
+
+## ContentType
+
+Used to set the respone Content-Type header. Example:
+
+    sub myaction :Local Does(Public) ShowDebugging { ... }
+
+By default we inspect the request URL extension and set a content type based on
+the extension text (defaulting to 'application/octet' if we cannot determine.  If
+you set this to a MIME type, we will alway set the response content type based on
+this, no matter what the extension, if any, says.
 
 # AUTHOR
 
@@ -121,3 +120,11 @@ Copyright 2015, John Napiorkowski [email:jjnapiork@cpan.org](email:jjnapiork@cpa
 
 This library is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.
+
+# POD ERRORS
+
+Hey! **The above document had some coding errors, which are explained below:**
+
+- Around line 214:
+
+    Expected text after =item, not a bullet
