@@ -72,9 +72,10 @@ sub evil_args {
   return 0;
 }
 
-around 'match' => sub {
-  my ($orig, $self, $ctx) = @_;
-  my @args = @{$ctx->req->args||[]};
+around ['match', 'match_captures'] => sub {
+  my ($orig, $self, $ctx, $captures) = @_;
+  # ->match does not get args :( but ->match_captures get captures...
+  my @args = defined($captures) ? @$captures : @{$ctx->req->args||[]};
   return 0 if($self->evil_args(@args));
 
   my %template_args = (
@@ -96,7 +97,7 @@ around 'match' => sub {
   
   if($self->is_real_file($full_path)) {
     $ctx->log->debug("Serving File: $full_path") if $ctx->debug;
-    return $self->$orig($ctx);
+    return $self->$orig($ctx, $captures);
   } else {
     $ctx->log->debug("File Not Found: $full_path") if $ctx->debug;
     return 0;
@@ -156,7 +157,10 @@ unlike L<Plack::App::File> or L<Catalyst::Plugin::Static::Simple>.  The action
 method body may be used to modify the response before finalization.
 
 A template may be constructed to determine how we map an incoming request to
-a path on the filesystem.
+a path on the filesystem.  You have extensive control how an incoming HTTP
+request maps to a file on the filesystem.  You can even use this action role
+in the middle of a chained style action (although its hard to imagine the
+use case for that...)
 
 =head2 ACTION METHOD BODY
 
@@ -185,7 +189,51 @@ if you have trouble serving files and you can't figure out why.
 Used to set the action class template used to match files on the filesystem to
 incoming requests.  Examples:
 
-    TBD
+    package MyApp::Controller::Basic;
+
+    use Moose;
+    use MooseX::MethodAttributes;
+
+    extends  'Catalyst::Controller';
+
+    #localhost/basic/css => $c->{root} .'/basic/*'
+    sub css :Local Does(Public) At(/:namespace/*) { }
+
+    #localhost/basic/static => $c->{root} .'/basic/static/*'
+    sub static :Local Does(Public) { }
+
+    #localhost/basic/111/aaa/link2/333/444.txt => $c->{root} .'/basic/link2/333/444.txt'
+    sub chainbase :Chained(/) PathPrefix CaptureArgs(1) { }
+
+      sub link1 :Chained(chainbase) PathPart(aaa) CaptureArgs(0) { }
+
+        sub link2 :Chained(link1) Args(2) Does(Public) { }
+
+    #localhost/chainbase2/111/aaa/222.txt/link4/333 => $c->{root} . '/basic/link3/222.txt'
+    sub chainbase2 :Chained(/)  CaptureArgs(1) { }
+
+      sub link3 :Chained(chainbase2) PathPart(aaa) CaptureArgs(1) Does(Public) { }
+
+        sub link4 :Chained(link3) Args(1)  { }
+
+    1;
+
+B<NOTE:> You're template may be 'relative or absolute' to the $c->{root} value
+based on if the first character in the template is '/' or not.   If it is '/'
+that is an 'absolute' template which will be added to $c->{root}.  Generally
+if you are making a template this is what you want.  However if you don't have
+a '/' prepended to the start of your template (such as in At(file.txt)) we then
+make your filesystem lookup relative to the action private path.  So in the
+example:
+
+    package MyApp::Controller::Basic;
+
+    sub absolute_path :Path('/example1') Does(Public) At(/example.txt) { }
+    sub relative_path :Path('/example2') Does(Public) At(example.txt) { }
+
+Then http://localhost/example1 => $c->{root} . '/example.txt' but
+http://localhost/example2 => $c->{root} . '/basic/relative_path/example.txt'.
+You may find this a useful "DWIW" when an action is linked to a particular file.
 
 B<NOTE:> The following expansions are recognized in your C<At> declaration:
 
@@ -202,6 +250,8 @@ configuration.  For example:
 Has a namespace of 'foo/bar/baz' by default.
 
 =item :privatepath
+
+=item :private_path
 
 The action private_path value.  By default this is the namespace + the action
 name.  For example:
@@ -222,6 +272,8 @@ The name of the action (typically the subroutine name)
 
     sub static :Local Does(Public) At(/:actionname/*) { ... }
 
+In this case actionname = 'static'
+
 =item :args
 
 =item *
@@ -232,7 +284,7 @@ The arguments to the request.  For example:
 
     sub myfiles :Path('') Does(Public) At(/:namespace/*) { ... }
 
-Would map 'http://localhost/static/a/b/c/d.txt' to $c->{root} . '/static/a/b/c/d.txt'.\
+Would map 'http://localhost/static/a/b/c/d.txt' to $c->{root} . '/static/a/b/c/d.txt'.
 
 In this case $args = ['a', 'b', 'c', 'd.txt']
 
@@ -248,6 +300,14 @@ By default we inspect the request URL extension and set a content type based on
 the extension text (defaulting to 'application/octet' if we cannot determine.  If
 you set this to a MIME type, we will alway set the response content type based on
 this, no matter what the extension, if any, says.
+
+=head1 RESPONSE INFO
+
+If we find a file we serve the filehandle directly to you plack handler, and set
+a 'with_path' value so that you can use this with something like L<Plack::Middleware::XSendfile>.
+We also set the Content-Type, Content-Length and Last-Modified headers.  If you
+need to add more information before finalizing the response you may do so with
+the matching action metod body.
 
 =head1 AUTHOR
  

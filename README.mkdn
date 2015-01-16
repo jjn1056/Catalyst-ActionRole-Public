@@ -27,7 +27,10 @@ unlike [Plack::App::File](https://metacpan.org/pod/Plack::App::File) or [Catalys
 method body may be used to modify the response before finalization.
 
 A template may be constructed to determine how we map an incoming request to
-a path on the filesystem.
+a path on the filesystem.  You have extensive control how an incoming HTTP
+request maps to a file on the filesystem.  You can even use this action role
+in the middle of a chained style action (although its hard to imagine the
+use case for that...)
 
 ## ACTION METHOD BODY
 
@@ -56,7 +59,51 @@ if you have trouble serving files and you can't figure out why.
 Used to set the action class template used to match files on the filesystem to
 incoming requests.  Examples:
 
-    TBD
+    package MyApp::Controller::Basic;
+
+    use Moose;
+    use MooseX::MethodAttributes;
+
+    extends  'Catalyst::Controller';
+
+    #localhost/basic/css => $c->{root} .'/basic/*'
+    sub css :Local Does(Public) At(/:namespace/*) { }
+
+    #localhost/basic/static => $c->{root} .'/basic/static/*'
+    sub static :Local Does(Public) { }
+
+    #localhost/basic/111/aaa/link2/333/444.txt => $c->{root} .'/basic/link2/333/444.txt'
+    sub chainbase :Chained(/) PathPrefix CaptureArgs(1) { }
+
+      sub link1 :Chained(chainbase) PathPart(aaa) CaptureArgs(0) { }
+
+        sub link2 :Chained(link1) Args(2) Does(Public) { }
+
+    #localhost/chainbase2/111/aaa/222.txt/link4/333 => $c->{root} . '/basic/link3/222.txt'
+    sub chainbase2 :Chained(/)  CaptureArgs(1) { }
+
+      sub link3 :Chained(chainbase2) PathPart(aaa) CaptureArgs(1) Does(Public) { }
+
+        sub link4 :Chained(link3) Args(1)  { }
+
+    1;
+
+**NOTE:** You're template may be 'relative or absolute' to the $c->{root} value
+based on if the first character in the template is '/' or not.   If it is '/'
+that is an 'absolute' template which will be added to $c->{root}.  Generally
+if you are making a template this is what you want.  However if you don't have
+a '/' prepended to the start of your template (such as in At(file.txt)) we then
+make your filesystem lookup relative to the action private path.  So in the
+example:
+
+    package MyApp::Controller::Basic;
+
+    sub absolute_path :Path('/example1') Does(Public) At(/example.txt) { }
+    sub relative_path :Path('/example2') Does(Public) At(example.txt) { }
+
+Then http://localhost/example1 => $c->{root} . '/example.txt' but
+http://localhost/example2 => $c->{root} . '/basic/relative\_path/example.txt'.
+You may find this a useful "DWIW" when an action is linked to a particular file.
 
 **NOTE:** The following expansions are recognized in your `At` declaration:
 
@@ -71,6 +118,7 @@ incoming requests.  Examples:
     Has a namespace of 'foo/bar/baz' by default.
 
 - :privatepath
+- :private\_path
 
     The action private\_path value.  By default this is the namespace + the action
     name.  For example:
@@ -90,6 +138,8 @@ incoming requests.  Examples:
 
         sub static :Local Does(Public) At(/:actionname/*) { ... }
 
+    In this case actionname = 'static'
+
 - :args
 - \*
 
@@ -99,7 +149,7 @@ incoming requests.  Examples:
 
         sub myfiles :Path('') Does(Public) At(/:namespace/*) { ... }
 
-    Would map 'http://localhost/static/a/b/c/d.txt' to $c->{root} . '/static/a/b/c/d.txt'.\\
+    Would map 'http://localhost/static/a/b/c/d.txt' to $c->{root} . '/static/a/b/c/d.txt'.
 
     In this case $args = \['a', 'b', 'c', 'd.txt'\]
 
@@ -113,6 +163,14 @@ By default we inspect the request URL extension and set a content type based on
 the extension text (defaulting to 'application/octet' if we cannot determine.  If
 you set this to a MIME type, we will alway set the response content type based on
 this, no matter what the extension, if any, says.
+
+# RESPONSE INFO
+
+If we find a file we serve the filehandle directly to you plack handler, and set
+a 'with\_path' value so that you can use this with something like [Plack::Middleware::XSendfile](https://metacpan.org/pod/Plack::Middleware::XSendfile).
+We also set the Content-Type, Content-Length and Last-Modified headers.  If you
+need to add more information before finalizing the response you may do so with
+the matching action metod body.
 
 # AUTHOR
 
@@ -134,6 +192,6 @@ the same terms as Perl itself.
 
 Hey! **The above document had some coding errors, which are explained below:**
 
-- Around line 227:
+- Around line 279:
 
     Expected text after =item, not a bullet

@@ -44,4 +44,21 @@ use Catalyst::Test 'MyApp';
   is $res->content_type, 'text/css';
 }
 
+# /basic/*/aaa/link2/*/*
+{
+  ok my $res = request '/basic/111/aaa/link2/333/444.txt';
+  is $res->code, 200;
+  is $res->content, "example\n";
+  is $res->content_length, 8;
+  is $res->content_type, 'text/plain';
+}
+
+{
+  ok my $res = request '/chainbase2/111/aaa/222.txt/link4/333';
+  is $res->code, 200;
+  is $res->content, "example\n";
+  is $res->content_length, 8;
+  is $res->content_type, 'text/plain';
+}
+
 done_testing;

@@ -7,32 +7,23 @@ extends  'Catalyst::Controller';
 
 sub absolute_path :Path('/example1') Args(0) Does(Public) At(/example.txt) { }
 sub relative_path :Path('/example2') Args(0) Does(Public) At(example.txt) { }
-sub set_content_type :Path('/example3') Args(0) Does(Public) ContentType(application/json) At(/:namespace/relative_path/example.txt) { }
+sub set_content_type :Path('/example3') Args(0) Does(Public) ContentType(application/json)
+  At(/:namespace/relative_path/example.txt) { }
 
 sub css :Local Does(Public) At(/:namespace/*) { }
 sub static :Local Does(Public) { }
 
-1;
+sub chainbase :Chained(/) PathPrefix CaptureArgs(1) { }
 
-__END__
-
-# http://localhost/as_global/...
-sub as_global :Path('/as_gobal') Does(Public) { }
-
-#http://localhost/actionrole/...
-sub test_path_prefix :Path('') Does(Public) { }
-
-#http://localhost/actionrole/path/...
-sub test_path :Path('path') Does(Public) { }
-
-#http://localhost/actionrole/mylocal/...
-sub mylocal :Local Does(Public) { }
-
-#http://localhost/actionrole/*/aaa/link2/*/*
-sub chainbase :Chained(/) PathPrefix CaptureArgs(1)  Does(Public) { }
-
-  sub link1 :Chained(chainbase) PathPart(aaa) CaptureArgs(0) Does(Public) { }
+  sub link1 :Chained(chainbase) PathPart(aaa) CaptureArgs(0) { }
 
     sub link2 :Chained(link1) Args(2) Does(Public) { }
 
+sub chainbase2 :Chained(/)  CaptureArgs(1) { }
+
+  sub link3 :Chained(chainbase2) PathPart(aaa) CaptureArgs(1) Does(Public) { }
+
+    sub link4 :Chained(link3) Args(1)  { }
+
 1;
+
