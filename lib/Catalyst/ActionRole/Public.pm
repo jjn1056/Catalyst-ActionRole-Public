@@ -80,6 +80,9 @@ around 'match' => sub {
   my %template_args = (
     ':namespace' => $self->namespace,
     ':privatepath' => $self->private_path,
+    ':private_path' => $self->private_path,
+    ':actionname' => $self->name,
+    ':action_name' => $self->name,
     ':args' => \@args,
     '*' => \@args);
 
@@ -135,7 +138,7 @@ Catalyst::ActionRole::Public - mount a public url to files in your Catalyst proj
     use Moose;
     use MooseX::MethodAttributes;
 
-    sub static :Local Does(Public) { ... }
+    sub static :Local Does(Public) At(/:actionname/*) { ... }
 
     __PACKAGE__->config(namespace=>'');
 
@@ -150,8 +153,10 @@ Use this actionrole to map a public facing URL attached to an action to a file
 (or files) on the filesystem, off the $c->{root} directory.  If the file does
 not exist, the action will not match.  No default 'notfound' page is created,
 unlike L<Plack::App::File> or L<Catalyst::Plugin::Static::Simple>.  The action
-method body may be used to modify the response before finalization.  A template
-may be constructed 
+method body may be used to modify the response before finalization.
+
+A template may be constructed to determine how we map an incoming request to
+a path on the filesystem.
 
 =head2 ACTION METHOD BODY
 
@@ -208,6 +213,14 @@ name.  For example:
 The action C<myaction> has a private_path of '/foo/bar/baz/myaction'.
 
 B<NOTE:> the expansion C<:private_path> is mapped to this value as well.
+
+=item actionname
+
+=item action_name
+
+The name of the action (typically the subroutine name)
+
+    sub static :Local Does(Public) At(/:actionname/*) { ... }
 
 =item :args
 

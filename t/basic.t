@@ -36,4 +36,12 @@ use Catalyst::Test 'MyApp';
   is $res->content_type, 'text/css';
 }
 
+{
+  ok my $res = request '/basic/static/a.css';
+  is $res->code, 200;
+  is $res->content, "example\n";
+  is $res->content_length, 8;
+  is $res->content_type, 'text/css';
+}
+
 done_testing;

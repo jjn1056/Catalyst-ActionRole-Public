@@ -9,7 +9,7 @@ Catalyst::ActionRole::Public - mount a public url to files in your Catalyst proj
     use Moose;
     use MooseX::MethodAttributes;
 
-    sub static :Local Does(Public) { ... }
+    sub static :Local Does(Public) At(/:actionname/*) { ... }
 
     __PACKAGE__->config(namespace=>'');
 
@@ -24,8 +24,10 @@ Use this actionrole to map a public facing URL attached to an action to a file
 (or files) on the filesystem, off the $c->{root} directory.  If the file does
 not exist, the action will not match.  No default 'notfound' page is created,
 unlike [Plack::App::File](https://metacpan.org/pod/Plack::App::File) or [Catalyst::Plugin::Static::Simple](https://metacpan.org/pod/Catalyst::Plugin::Static::Simple).  The action
-method body may be used to modify the response before finalization.  A template
-may be constructed 
+method body may be used to modify the response before finalization.
+
+A template may be constructed to determine how we map an incoming request to
+a path on the filesystem.
 
 ## ACTION METHOD BODY
 
@@ -81,6 +83,13 @@ incoming requests.  Examples:
 
     **NOTE:** the expansion `:private_path` is mapped to this value as well.
 
+- actionname
+- action\_name
+
+    The name of the action (typically the subroutine name)
+
+        sub static :Local Does(Public) At(/:actionname/*) { ... }
+
 - :args
 - \*
 
@@ -125,6 +134,6 @@ the same terms as Perl itself.
 
 Hey! **The above document had some coding errors, which are explained below:**
 
-- Around line 214:
+- Around line 227:
 
     Expected text after =item, not a bullet
