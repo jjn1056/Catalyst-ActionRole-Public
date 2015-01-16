@@ -141,7 +141,7 @@ You may find this a useful "DWIW" when an action is linked to a particular file.
     In this case actionname = 'static'
 
 - :args
-- \*
+- '\*'
 
     The arguments to the request.  For example:
 
@@ -187,11 +187,3 @@ Copyright 2015, John Napiorkowski [email:jjnapiork@cpan.org](email:jjnapiork@cpa
 
 This library is free software; you can redistribute it and/or modify it under
 the same terms as Perl itself.
-
-# POD ERRORS
-
-Hey! **The above document had some coding errors, which are explained below:**
-
-- Around line 279:
-
-    Expected text after =item, not a bullet

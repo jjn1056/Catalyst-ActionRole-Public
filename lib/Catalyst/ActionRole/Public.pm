@@ -276,7 +276,7 @@ In this case actionname = 'static'
 
 =item :args
 
-=item *
+=item '*'
 
 The arguments to the request.  For example:
 
