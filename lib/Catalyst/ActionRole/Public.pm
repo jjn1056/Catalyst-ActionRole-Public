@@ -6,7 +6,7 @@ use Cwd ();
 use Plack::MIME ();
 use HTTP::Date ();
 
-our $VERSION = '0.003';
+our $VERSION = '0.005';
 
 requires 'attributes','execute', 'match', 'match_captures',
   'namespace', 'private_path', 'name';

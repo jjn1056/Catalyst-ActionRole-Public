@@ -1,5 +1,8 @@
 # This file documents the revision history for Perl extension Catalyst::ActionRole::Public.
 
+0.005 - 2015-01-22
+  - released to fix broken previous release :(
+
 0.004 - 2015-01-22
   - Allow one to set more than one allowed content type.
 
