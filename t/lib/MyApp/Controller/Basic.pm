@@ -7,7 +7,7 @@ extends  'Catalyst::Controller';
 
 sub absolute_path :Path('/example1') Args(0) Does(Public) At(/example.txt) { }
 sub relative_path :Path('/example2') Args(0) Does(Public) At(example.txt) { }
-sub set_content_type :Path('/example3') Args(0) Does(Public) ContentType(application/javascript)
+sub set_content_type :Path('/example3') Args(0) Does(Public) ContentType(application/json) ContentType(text/html,application/javascript)
   At(/:namespace/relative_path/example.js) { }
 
 sub css :Local Does(Public) At(/:namespace/*) { }

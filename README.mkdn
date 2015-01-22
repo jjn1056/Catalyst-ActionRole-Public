@@ -155,15 +155,18 @@ You may find this a useful "DWIW" when an action is linked to a particular file.
 
 ## ContentType
 
-Used to set the respone Content-Type header. Example:
+Used to set the response Content-Type header and match the file extension. Example:
 
     sub myaction :Local Does(Public) ContentType(application/javascript) { ... }
 
 By default we inspect the request URL extension and set a content type based on
 the extension text (defaulting to 'application/octet' if we cannot determine).  If
-you set this to a MIME type, we will alway set the response content type based on
+you set this to a MIME type, we will always set the response content type based on
 this.  Also, we will only match static files on the filesystem whose extensions
 match the declared type.
+
+You may declare more than one ContentType, in which case all allowed types are
+permitted in the match.
 
 # RESPONSE INFO
 

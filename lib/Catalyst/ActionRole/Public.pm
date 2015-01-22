@@ -19,19 +19,25 @@ has at => (
 
   sub _build_at {
     my ($self) = @_;
-    my ($at) = (@{$self->attributes->{At}||['/:privatepath/:args']});
+    my ($at) =  @{$self->attributes->{At}||['/:privatepath/:args']};
     return $at;
   }
 
-has content_type => (
+has content_types => (
   is=>'ro',
+  traits=>['Array'],
+  isa=>'ArrayRef[Str]',
   lazy=>1,
-  builder=>'_build_content_type');
+  builder=>'_build_content_type',
+  handles=>{
+    has_content_type => 'count',
+    filter_content_types =>  'grep',
+  });
 
   sub _build_content_type {
-    my ($self) = @_;
-    my ($ct) = (@{$self->attributes->{ContentType}||[]});
-    return $ct;
+    my $self = shift;
+    my @ct = @{$self->attributes->{ContentType} || []};
+    return [ map { split(',', $_)} @ct];
   }
 
 has show_debugging => (
@@ -76,6 +82,15 @@ sub evil_args {
   return 0;
 }
 
+sub path_is_allowed_content_type {
+  my ($self, $full_path) = @_;
+  if($self->has_content_type) {
+    return scalar($self->filter_content_types(sub { lc(Plack::MIME->mime_type($full_path)) eq lc($_) }));
+  } else {
+    return 1;
+  }
+}
+
 around ['match', 'match_captures'] => sub {
   my ($orig, $self, $ctx, $captures) = @_;
   # ->match does not get args :( but ->match_captures get captures...
@@ -99,11 +114,8 @@ around ['match', 'match_captures'] => sub {
 
   $ctx->log->debug("Requested File: $full_path") if $ctx->debug;
 
-  if(my $ct = $self->content_type) {
-    if(lc(Plack::MIME->mime_type($full_path)) ne lc($ct)) {
-      $ctx->log->debug("Requested Content-Type is not $ct") if $ctx->debug;
-      return 0;
-    }
+  unless($self->path_is_allowed_content_type($full_path)) {
+    return 0;
   }
   
   if($self->is_real_file($full_path)) {
@@ -122,7 +134,7 @@ around 'execute', sub {
   Plack::Util::set_io_path($fh, Cwd::realpath($ctx->stash->{public_file_path}));
 
   my $stat = $ctx->stash->{public_file_path}->stat;
-  my $content_type = $self->content_type || Plack::MIME->mime_type($ctx->stash->{public_file_path})
+  my $content_type = Plack::MIME->mime_type($ctx->stash->{public_file_path})
     || 'application/octet';
 
   $ctx->res->from_psgi_response([
@@ -303,15 +315,18 @@ In this case $args = ['a', 'b', 'c', 'd.txt']
 
 =head2 ContentType
 
-Used to set the respone Content-Type header. Example:
+Used to set the response Content-Type header and match the file extension. Example:
 
     sub myaction :Local Does(Public) ContentType(application/javascript) { ... }
 
 By default we inspect the request URL extension and set a content type based on
 the extension text (defaulting to 'application/octet' if we cannot determine).  If
-you set this to a MIME type, we will alway set the response content type based on
+you set this to a MIME type, we will always set the response content type based on
 this.  Also, we will only match static files on the filesystem whose extensions
 match the declared type.
+
+You may declare more than one ContentType, in which case all allowed types are
+permitted in the match.
 
 =head1 RESPONSE INFO
 
