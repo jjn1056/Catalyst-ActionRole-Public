@@ -6,7 +6,7 @@ use Cwd ();
 use Plack::MIME ();
 use HTTP::Date ();
 
-our $VERSION = '0.002';
+our $VERSION = '0.003';
 
 requires 'attributes','execute', 'match', 'match_captures',
   'namespace', 'private_path', 'name';
@@ -45,6 +45,7 @@ has show_debugging => (
     return exists $self->attributes->{ShowDebugging} ? 1:0;
   }
 
+#need to be able to do like /{:private_path}.html
 sub expand_at_template {
   my ($self, $at, %args) = @_;
   return my @at_parts =
@@ -97,6 +98,13 @@ around ['match', 'match_captures'] => sub {
     (my $full_path = $ctx->{root}->file(@path_parts)));
 
   $ctx->log->debug("Requested File: $full_path") if $ctx->debug;
+
+  if(my $ct = $self->content_type) {
+    if(lc(Plack::MIME->mime_type($full_path)) ne lc($ct)) {
+      $ctx->log->debug("Requested Content-Type is not $ct") if $ctx->debug;
+      return 0;
+    }
+  }
   
   if($self->is_real_file($full_path)) {
     $ctx->log->debug("Serving File: $full_path") if $ctx->debug;
@@ -297,12 +305,13 @@ In this case $args = ['a', 'b', 'c', 'd.txt']
 
 Used to set the respone Content-Type header. Example:
 
-    sub myaction :Local Does(Public) ShowDebugging { ... }
+    sub myaction :Local Does(Public) ContentType(application/javascript) { ... }
 
 By default we inspect the request URL extension and set a content type based on
-the extension text (defaulting to 'application/octet' if we cannot determine.  If
+the extension text (defaulting to 'application/octet' if we cannot determine).  If
 you set this to a MIME type, we will alway set the response content type based on
-this, no matter what the extension, if any, says.
+this.  Also, we will only match static files on the filesystem whose extensions
+match the declared type.
 
 =head1 RESPONSE INFO
 

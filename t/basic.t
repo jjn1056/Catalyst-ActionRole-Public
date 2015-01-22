@@ -25,7 +25,7 @@ use Catalyst::Test 'MyApp';
   is $res->code, 200;
   is $res->content, "example\n";
   is $res->content_length, 8;
-  is $res->content_type, 'application/json';
+  is $res->content_type, 'application/javascript';
 }
 
 {
