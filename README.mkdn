@@ -176,6 +176,50 @@ We also set the Content-Type, Content-Length and Last-Modified headers.  If you
 need to add more information before finalizing the response you may do so with
 the matching action metod body.
 
+# COOKBOOK
+
+I often use this in a Root.pm controller like:
+
+    package MyApp::Web::Controller::Root;
+
+    use Moose;
+    use MooseX::MethodAttributes;
+    use HTTP::Exception;
+
+    extends 'Catalyst::Controller';
+
+    sub root :Chained(/) PathPart('') CaptureArgs(0) {
+      my ($self, $c) = @_; 
+    }
+
+      sub index :Chained(root) PathPart('') Args(0) {
+        my ($self, $c) = @_;
+      }
+
+      sub css :Chained(root) Args Does(Public) ContentType(text/css) { } 
+      sub js  :Chained(root) Args Does(Public) ContentType(application/javascript) { } 
+      sub img :Chained(root) Args Does(Public) { }
+      sub html :Chained(root) PathPart('') Args Does(Public) At(/:args) ContentType(text/html,text/plain) { }
+
+    sub default :Default { HTTP::Exception->throw(404) }
+    sub end :ActionClass(RenderView) { }
+
+    __PACKAGE__->config(namespace=>'');
+    __PACKAGE__->meta->make_immutable;
+
+This sets up to let me mix my templates and static files under $c->{root} and in
+general prevents non asset types from being accidentally posted.  I might then
+have a directory of files like:
+
+    root/
+      css/
+      js/
+      img/
+      index.html
+      welcome.template
+
+FWIW!
+
 # AUTHOR
 
 John Napiorkowski [email:jjnapiork@cpan.org](email:jjnapiork@cpan.org)

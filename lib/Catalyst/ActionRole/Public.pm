@@ -6,7 +6,7 @@ use Cwd ();
 use Plack::MIME ();
 use HTTP::Date ();
 
-our $VERSION = '0.005';
+our $VERSION = '0.006';
 
 requires 'attributes','execute', 'match', 'match_captures',
   'namespace', 'private_path', 'name';
@@ -37,7 +37,7 @@ has content_types => (
   sub _build_content_type {
     my $self = shift;
     my @ct = @{$self->attributes->{ContentType} || []};
-    return [ map { split(',', $_)} @ct];
+    return [ grep {defined $_} map { split(',', $_)} @ct];
   }
 
 has show_debugging => (
@@ -85,7 +85,7 @@ sub evil_args {
 sub path_is_allowed_content_type {
   my ($self, $full_path) = @_;
   if($self->has_content_type) {
-    return scalar($self->filter_content_types(sub { lc(Plack::MIME->mime_type($full_path)) eq lc($_) }));
+    return scalar($self->filter_content_types(sub { lc(Plack::MIME->mime_type($full_path)||'') eq lc($_) }));
   } else {
     return 1;
   }
@@ -112,9 +112,8 @@ around ['match', 'match_captures'] => sub {
   $ctx->stash(public_file_path => 
     (my $full_path = $ctx->{root}->file(@path_parts)));
 
-  $ctx->log->debug("Requested File: $full_path") if $ctx->debug;
-
   unless($self->path_is_allowed_content_type($full_path)) {
+    $ctx->log->debug("File '$full_path' is not allowed content-type") if $ctx->debug;
     return 0;
   }
   
@@ -335,6 +334,50 @@ a 'with_path' value so that you can use this with something like L<Plack::Middle
 We also set the Content-Type, Content-Length and Last-Modified headers.  If you
 need to add more information before finalizing the response you may do so with
 the matching action metod body.
+
+=head1 COOKBOOK
+
+I often use this in a Root.pm controller like:
+
+    package MyApp::Web::Controller::Root;
+
+    use Moose;
+    use MooseX::MethodAttributes;
+    use HTTP::Exception;
+
+    extends 'Catalyst::Controller';
+
+    sub root :Chained(/) PathPart('') CaptureArgs(0) {
+      my ($self, $c) = @_; 
+    }
+
+      sub index :Chained(root) PathPart('') Args(0) {
+        my ($self, $c) = @_;
+      }
+
+      sub css :Chained(root) Args Does(Public) ContentType(text/css) { } 
+      sub js  :Chained(root) Args Does(Public) ContentType(application/javascript) { } 
+      sub img :Chained(root) Args Does(Public) { }
+      sub html :Chained(root) PathPart('') Args Does(Public) At(/:args) ContentType(text/html,text/plain) { }
+
+    sub default :Default { HTTP::Exception->throw(404) }
+    sub end :ActionClass(RenderView) { }
+
+    __PACKAGE__->config(namespace=>'');
+    __PACKAGE__->meta->make_immutable;
+
+This sets up to let me mix my templates and static files under $c->{root} and in
+general prevents non asset types from being accidentally posted.  I might then
+have a directory of files like:
+
+    root/
+      css/
+      js/
+      img/
+      index.html
+      welcome.template
+
+FWIW!
 
 =head1 AUTHOR
  
