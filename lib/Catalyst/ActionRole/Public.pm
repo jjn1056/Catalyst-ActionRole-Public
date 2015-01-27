@@ -6,7 +6,7 @@ use Cwd ();
 use Plack::MIME ();
 use HTTP::Date ();
 
-our $VERSION = '0.006';
+our $VERSION = '0.007';
 
 requires 'attributes','execute', 'match', 'match_captures',
   'namespace', 'private_path', 'name';
@@ -110,7 +110,7 @@ around ['match', 'match_captures'] => sub {
     $self->expand_at_template($self->at, %template_args));
 
   $ctx->stash(public_file_path => 
-    (my $full_path = $ctx->{root}->file(@path_parts)));
+    (my $full_path = $ctx->config->{root}->file(@path_parts)));
 
   unless($self->path_is_allowed_content_type($full_path)) {
     $ctx->log->debug("File '$full_path' is not allowed content-type") if $ctx->debug;
@@ -166,14 +166,14 @@ Catalyst::ActionRole::Public - Mount a public url to files in your project direc
     __PACKAGE__->config(namespace=>'');
 
 Will create an action that from URL 'localhost/static/a/b/c/d.js' will serve
-file $c->{root} . '/static' . '/a/b/c/d.js'.  Will also set content type, length
+file $c->config->{root} . '/static' . '/a/b/c/d.js'.  Will also set content type, length
 and Last-Modified HTTP headers as needed.  If the file does not exist, will not
 match (allowing possibly other actions to match).
 
 =head1 DESCRIPTION
 
 Use this actionrole to map a public facing URL attached to an action to a file
-(or files) on the filesystem, off the $c->{root} directory.  If the file does
+(or files) on the filesystem, off the $c->config->{root} directory.  If the file does
 not exist, the action will not match.  No default 'notfound' page is created,
 unlike L<Plack::App::File> or L<Catalyst::Plugin::Static::Simple>.  The action
 method body may be used to modify the response before finalization.
@@ -218,20 +218,20 @@ incoming requests.  Examples:
 
     extends  'Catalyst::Controller';
 
-    #localhost/basic/css => $c->{root} .'/basic/*'
+    #localhost/basic/css => $c->config->{root} .'/basic/*'
     sub css :Local Does(Public) At(/:namespace/*) { }
 
-    #localhost/basic/static => $c->{root} .'/basic/static/*'
+    #localhost/basic/static => $c->config->{root} .'/basic/static/*'
     sub static :Local Does(Public) { }
 
-    #localhost/basic/111/aaa/link2/333/444.txt => $c->{root} .'/basic/link2/333/444.txt'
+    #localhost/basic/111/aaa/link2/333/444.txt => $c->config->{root} .'/basic/link2/333/444.txt'
     sub chainbase :Chained(/) PathPrefix CaptureArgs(1) { }
 
       sub link1 :Chained(chainbase) PathPart(aaa) CaptureArgs(0) { }
 
         sub link2 :Chained(link1) Args(2) Does(Public) { }
 
-    #localhost/chainbase2/111/aaa/222.txt/link4/333 => $c->{root} . '/basic/link3/222.txt'
+    #localhost/chainbase2/111/aaa/222.txt/link4/333 => $c->config->{root} . '/basic/link3/222.txt'
     sub chainbase2 :Chained(/)  CaptureArgs(1) { }
 
       sub link3 :Chained(chainbase2) PathPart(aaa) CaptureArgs(1) Does(Public) { }
@@ -240,9 +240,9 @@ incoming requests.  Examples:
 
     1;
 
-B<NOTE:> You're template may be 'relative or absolute' to the $c->{root} value
+B<NOTE:> You're template may be 'relative or absolute' to the $c->config->{root} value
 based on if the first character in the template is '/' or not.   If it is '/'
-that is an 'absolute' template which will be added to $c->{root}.  Generally
+that is an 'absolute' template which will be added to $c->config->{root}.  Generally
 if you are making a template this is what you want.  However if you don't have
 a '/' prepended to the start of your template (such as in At(file.txt)) we then
 make your filesystem lookup relative to the action private path.  So in the
@@ -253,8 +253,8 @@ example:
     sub absolute_path :Path('/example1') Does(Public) At(/example.txt) { }
     sub relative_path :Path('/example2') Does(Public) At(example.txt) { }
 
-Then http://localhost/example1 => $c->{root} . '/example.txt' but
-http://localhost/example2 => $c->{root} . '/basic/relative_path/example.txt'.
+Then http://localhost/example1 => $c->config->{root} . '/example.txt' but
+http://localhost/example2 => $c->config->{root} . '/basic/relative_path/example.txt'.
 You may find this a useful "DWIW" when an action is linked to a particular file.
 
 B<NOTE:> The following expansions are recognized in your C<At> declaration:
@@ -306,7 +306,7 @@ The arguments to the request.  For example:
 
     sub myfiles :Path('') Does(Public) At(/:namespace/*) { ... }
 
-Would map 'http://localhost/static/a/b/c/d.txt' to $c->{root} . '/static/a/b/c/d.txt'.
+Would map 'http://localhost/static/a/b/c/d.txt' to $c->config->{root} . '/static/a/b/c/d.txt'.
 
 In this case $args = ['a', 'b', 'c', 'd.txt']
 
@@ -366,7 +366,7 @@ I often use this in a Root.pm controller like:
     __PACKAGE__->config(namespace=>'');
     __PACKAGE__->meta->make_immutable;
 
-This sets up to let me mix my templates and static files under $c->{root} and in
+This sets up to let me mix my templates and static files under $c->config->{root} and in
 general prevents non asset types from being accidentally posted.  I might then
 have a directory of files like:
 
