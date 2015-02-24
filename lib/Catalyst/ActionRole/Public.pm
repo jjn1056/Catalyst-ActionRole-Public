@@ -6,7 +6,7 @@ use Cwd ();
 use Plack::MIME ();
 use HTTP::Date ();
 
-our $VERSION = '0.007';
+our $VERSION = '0.008';
 
 requires 'attributes','execute', 'match', 'match_captures',
   'namespace', 'private_path', 'name';
@@ -50,6 +50,21 @@ has show_debugging => (
     my ($self) = @_;
     return exists $self->attributes->{ShowDebugging} ? 1:0;
   }
+
+has cache_control => (
+  is=>'ro',
+  lazy=>1,
+  builder=>'_build_cache_control');
+
+  sub _build_cache_control {
+    my ($self) = @_;
+    if(exists $self->attributes->{CacheControl}) {
+      my @cc = @{$self->attributes->{CacheControl} || []};
+      return join ',', @cc;
+    }
+  }
+
+  sub has_cache_control { shift->attributes->{CacheControl} ? 1:0 }
 
 #need to be able to do like /{:private_path}.html
 sub expand_at_template {
@@ -141,7 +156,8 @@ around 'execute', sub {
     [
       'Content-Type'   => $content_type,
       'Content-Length' => $stat->[7],
-      'Last-Modified'  => HTTP::Date::time2str( $stat->[9] )
+      'Last-Modified'  => HTTP::Date::time2str( $stat->[9] ),
+      ($self->has_cache_control ? ('Cache-Control' => $self->cache_control):()),
     ],
     $fh]);
 
@@ -326,6 +342,13 @@ match the declared type.
 
 You may declare more than one ContentType, in which case all allowed types are
 permitted in the match.
+
+=head2 CacheControl
+
+Used to set the Cache-Control HTTP header (useful for caching your static assets).
+Example:
+
+    sub myaction :Local Does(Public) CacheControl(public, max-age=600) { ...}
 
 =head1 RESPONSE INFO
 

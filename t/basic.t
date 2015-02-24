@@ -61,4 +61,13 @@ use Catalyst::Test 'MyApp';
   is $res->content_type, 'text/plain';
 }
 
+{
+  ok my $res = request '/basic/cache_control_1';
+  is $res->code, 200;
+  is $res->content, "example\n";
+  is $res->content_length, 8;
+  is $res->content_type, 'text/plain';
+  is $res->header('Cache-Control'), 'private, max-age=600';
+}
+
 done_testing;

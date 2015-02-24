@@ -25,5 +25,6 @@ sub chainbase2 :Chained(/)  CaptureArgs(1) { }
 
     sub link4 :Chained(link3) Args(1)  { }
 
+sub cache_control_1 :Local Args(0) Does(Public) CacheControl(private, max-age=600) At(/example.txt) { }
 1;
 
