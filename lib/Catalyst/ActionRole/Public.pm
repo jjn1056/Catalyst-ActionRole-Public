@@ -6,7 +6,7 @@ use Cwd ();
 use Plack::MIME ();
 use HTTP::Date ();
 
-our $VERSION = '0.008';
+our $VERSION = '0.009';
 
 requires 'attributes','execute', 'match', 'match_captures',
   'namespace', 'private_path', 'name';
@@ -107,7 +107,8 @@ sub path_is_allowed_content_type {
 }
 
 around ['match', 'match_captures'] => sub {
-  my ($orig, $self, $ctx, $captures) = @_;
+  my ($orig, $self, $ctx, $captures, @more) = @_;
+  return 0 unless $self->$orig($ctx, $captures, @more);
   # ->match does not get args :( but ->match_captures get captures...
   my @args = defined($captures) ? @$captures : @{$ctx->req->args||[]};
   return 0 if($self->evil_args(@args));
